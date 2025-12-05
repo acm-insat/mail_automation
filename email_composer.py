@@ -8,46 +8,45 @@ from email.mime.text import MIMEText
 
 from config import Config
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 class EmailService:
-    """Handles constructing and sending emails."""
-
-
     def __init__(self, service):
         self.service = service
+        self.template_content = self._load_template()
 
-    def _build_html_body(self, name: str) -> str:
-        return f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; color: #333;">
-          <p>Hi {name},</p>
-          <p>Thank you for being part of CodeQuest 3.0.</p>
-          <p>You’ve completed this edition, and we’re happy to award you your official participation certificate.</p>
-          <p><strong>Please find your certificate attached.</strong></p>
-          <p>Feedback: <a href="{Config.FORM_LINK}">Click here</a></p>
-          <p>The CodeQuest Team</p>
-          <br>
-          <img src="cid:sig_img" alt="Signature" style="width:100%; max-width:500px;">
-        </body>
-        </html>
-        """
+    def _load_template(self) -> str:
+        """Reads the HTML file into memory."""
+        if not Config.TEMPLATE_FILE.exists():
+            raise FileNotFoundError(f"Template not found at {Config.TEMPLATE_FILE}")
+        with open(Config.TEMPLATE_FILE, 'r', encoding='utf-8') as f:
+            return f.read()
 
     def send_email(self, to_email: str, name: str, cert_data: bytes, cert_name: str):
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            datefmt='%H:%M:%S'
-        )
-        logger = logging.getLogger(__name__)
-
         msg = MIMEMultipart('mixed')
         msg['To'] = to_email
         msg['Subject'] = "Your CodeQuest 3.0 Certificate"
 
-        # Related part (HTML + Inline Images)
         msg_related = MIMEMultipart('related')
         msg.attach(msg_related)
-        msg_related.attach(MIMEText(self._build_html_body(name), 'html'))
+
+        # Inject variables into the HTML template
+        # We use .format() to replace {name} and {form_link} in the HTML file
+        try:
+            filled_html = self.template_content.format(
+                name=name,
+                form_link=Config.FORM_LINK
+            )
+        except KeyError as e:
+            logger.error(f"Template error: Missing placeholder {e} in HTML file.")
+            filled_html = self.template_content # Fallback to raw template if error
+
+        msg_related.attach(MIMEText(filled_html, 'html'))
 
         # Inline Signature
         if Config.SIGNATURE_IMAGE_PATH.exists():
@@ -57,7 +56,7 @@ class EmailService:
                 img.add_header('Content-Disposition', 'inline')
                 msg_related.attach(img)
         else:
-            logger.warning("Signature image not found. Sending without it.")
+            logger.warning(f"Signature {Config.SIGNATURE_IMAGE_PATH} not found.")
 
         # Attachment
         part = MIMEBase('application', 'octet-stream')
@@ -66,6 +65,5 @@ class EmailService:
         part.add_header('Content-Disposition', f'attachment; filename="{cert_name}"')
         msg.attach(part)
 
-        # Send
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
         self.service.users().messages().send(userId="me", body={"raw": raw}).execute()

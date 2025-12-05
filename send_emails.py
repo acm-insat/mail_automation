@@ -1,9 +1,6 @@
-import datetime
+from datetime import datetime
 import logging
 import time
-from pathlib import Path
-
-from dotenv import load_dotenv
 
 from config import Config
 from drive_manager import DriveManager
@@ -34,10 +31,10 @@ def main():
         try:
             col_map = {
                 'email': headers.index('email'),
-                'name': headers.index('name'),
+                'name': headers.index('namecapitalized'),
                 'cert': headers.index('certifs'),
                 'sent': headers.index('sent?'),
-                'time': headers.index('timestamp')
+                'timestamp': headers.index('timestamp')
             }
         except ValueError as e:
             logger.error(f"Column missing in spreadsheet: {e}")
@@ -64,7 +61,7 @@ def main():
                 email_service.send_email(email, name, cert_data, cert_name)
 
                 sheet_manager.update_cell(Config.TAB_NAME, i, col_map['sent'], "Yes")
-                sheet_manager.update_cell(Config.TAB_NAME, i, col_map['time'], datetime.now().strftime("%Y-%m-%d %H:%M"))
+                sheet_manager.update_cell(Config.TAB_NAME, i, col_map['timestamp'], datetime.now().strftime("%Y-%m-%d %H:%M"))
 
                 logger.info(f"Success: {email}")
                 time.sleep(1)
