@@ -30,7 +30,8 @@ class EmailService:
     def send_email(self, to_email: str, name: str, cert_data: bytes, cert_name: str):
         msg = MIMEMultipart('mixed')
         msg['To'] = to_email
-        msg['Subject'] = "Your CodeQuest 3.0 Certificate"
+        msg['Subject'] ="Appreciation & Certificate of Ambassadorship – CodeQuest 3rd Edition"
+
 
         msg_related = MIMEMultipart('related')
         msg.attach(msg_related)

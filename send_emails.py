@@ -31,8 +31,8 @@ def main():
         try:
             col_map = {
                 'email': headers.index('email'),
-                'name': headers.index('namecapitalized'),
-                'cert': headers.index('certifs'),
+                'name': headers.index('name'),
+                'cert': headers.index('certif'),
                 'sent': headers.index('sent?'),
                 'timestamp': headers.index('timestamp')
             }
